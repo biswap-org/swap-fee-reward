@@ -3,7 +3,6 @@ pragma solidity =0.6.6;
 import "./libs/SafeMath.sol";
 import "./libs/FixedPoint.sol";
 import "./libs/OracleLibrary.sol";
-//import "@nomiclabs/buidler/console.sol";
 
 contract Oracle {
     using FixedPoint for *;
