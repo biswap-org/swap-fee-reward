@@ -131,8 +131,6 @@ interface IBSWPair {
     function setDevFee(uint32) external;
 }
 
-//import "@nomiclabs/buidler/console.sol";
-
 interface IBswToken is IERC20 {
     function mint(address to, uint256 amount) external returns (bool);
 }
@@ -204,11 +202,11 @@ contract SwapFeeReward is Ownable{
             ))));
     }
 
-    function getSwapFee(address factory, address tokenA, address tokenB) internal view returns (uint swapFee) {
+    function getSwapFee(address tokenA, address tokenB) internal view returns (uint swapFee) {
         swapFee = uint(1000).sub(IBSWPair(pairFor(tokenA, tokenB)).swapFee());
     }
 
-    function checkPhase() private returns (bool){
+    function checkPhase() private view returns (bool){
         if (totalMined >= currentPhase.mul(maxMiningInPhase)){
             return false;
         }
@@ -224,11 +222,9 @@ contract SwapFeeReward is Ownable{
             return false;
         }
         if (checkPhase() == false){
-            //console.log('phase');
             return false;
         }
         if (maxMiningAmount <= totalMined){
-            //console.log('mined');
             return false;
         }
 
@@ -238,21 +234,10 @@ contract SwapFeeReward is Ownable{
             return false;
         }
 
-        uint256 pairFee = getSwapFee(factory, input, output);
-        //console.log('pairFee: ', pairFee);
-
-        uint256 fee = amount.div(pairFee); //percent 80-110 in pair
-        //console.log('amount: ', amount);
-        //console.log('fee: ', fee);
-
+        uint256 pairFee = getSwapFee(input, output);
+        uint256 fee = amount.div(pairFee);
         uint256 quantity = getQuantity(output, fee, targetToken);
-
-        //console.log('quantity', quantity);
-
         quantity = quantity.mul(pool.percentReward).div(100);
-       // console.log('percentReward', pool.percentReward);
-        //console.log('quantity', quantity);
-
         _balances[account] = _balances[account].add(quantity);
         return true;
     }
@@ -351,9 +336,5 @@ contract SwapFeeReward is Ownable{
     }
     function setPairEnabled(uint256 _pid, bool _enabled) public onlyOwner {
         pairsList[_pid].enabled = _enabled;
-    }
-
-    function getPairAddress(address tokenA, address tokenB) public view returns (address){
-        return pairFor(tokenA, tokenB);
     }
 }
