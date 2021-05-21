@@ -145,8 +145,8 @@ contract SwapFeeReward is Ownable{
     address public router;
     bytes32 public INIT_CODE_HASH;
     //max amount in BSW that this contact will be mint;
-    uint256 public maxMiningAmount  = 100000000000000000000000000;
-    uint256 public maxMiningInPhase = 5000000000000000000000000;
+    uint256 public maxMiningAmount  = 100 * 1e18;
+    uint256 public maxMiningInPhase = 1 * 1e18;
     uint currentPhase = 1;
     uint256 public totalMined = 0;
     IBswToken public bswToken;
