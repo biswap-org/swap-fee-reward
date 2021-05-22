@@ -6,7 +6,7 @@ import "./libs/EnumerableSet.sol";
 import "./interfaces/IERC20.sol";
 import "./interfaces/IOracle.sol";
 
-interface IBiswapFactory {
+interface IBSWFactory {
     event PairCreated(address indexed token0, address indexed token1, address pair, uint);
 
     function feeTo() external view returns (address);
