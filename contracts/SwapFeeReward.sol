@@ -6,74 +6,23 @@ import "./libs/EnumerableSet.sol";
 import "./interfaces/IERC20.sol";
 import "./interfaces/IOracle.sol";
 
-interface IBSWFactory {
+interface IBiswapFactory {
     event PairCreated(address indexed token0, address indexed token1, address pair, uint);
 
-    function FEE_RATE_DENOMINATOR() external view returns (uint256);
-
-    function feeRateNumerator() external view returns (uint256);
-
     function feeTo() external view returns (address);
-
     function feeToSetter() external view returns (address);
-
-    function feeToRate() external view returns (uint256);
-
-    function initCodeHash() external view returns (bytes32);
-
-    function pairFeeToRate(address) external view returns (uint256);
-
-    function pairFees(address) external view returns (uint256);
+    function INIT_CODE_HASH() external pure returns (bytes32);
 
     function getPair(address tokenA, address tokenB) external view returns (address pair);
-
     function allPairs(uint) external view returns (address pair);
-
     function allPairsLength() external view returns (uint);
 
     function createPair(address tokenA, address tokenB) external returns (address pair);
 
     function setFeeTo(address) external;
-
     function setFeeToSetter(address) external;
-
-    function addPair(address) external returns (bool);
-
-    function delPair(address) external returns (bool);
-
-    function getSupportListLength() external view returns (uint256);
-
-    function isSupportPair(address pair) external view returns (bool);
-
-    function getSupportPair(uint256 index) external view returns (address);
-
-    function setFeeRateNumerator(uint256) external;
-
-    function setPairFees(address pair, uint256 fee) external;
-
-    function setDefaultFeeToRate(uint256) external;
-
-    function setPairFeeToRate(address pair, uint256 rate) external;
-
-    function getPairFees(address) external view returns (uint256);
-
-    function getPairRate(address) external view returns (uint256);
-
-    function sortTokens(address tokenA, address tokenB) external pure returns (address token0, address token1);
-
-    function pairFor(address tokenA, address tokenB) external view returns (address pair);
-
-    function getReserves(address tokenA, address tokenB) external view returns (uint256 reserveA, uint256 reserveB);
-
-    function quote(uint256 amountA, uint256 reserveA, uint256 reserveB) external pure returns (uint256 amountB);
-
-    function getAmountOut(uint256 amountIn, uint256 reserveIn, uint256 reserveOut, address token0, address token1) external view returns (uint256 amountOut);
-
-    function getAmountIn(uint256 amountOut, uint256 reserveIn, uint256 reserveOut, address token0, address token1) external view returns (uint256 amountIn);
-
-    function getAmountsOut(uint256 amountIn, address[] calldata path) external view returns (uint256[] memory amounts);
-
-    function getAmountsIn(uint256 amountOut, address[] calldata path) external view returns (uint256[] memory amounts);
+    function setDevFee(address pair, uint8 _devFee) external;
+    function setSwapFee(address pair, uint32 swapFee) external;
 }
 
 interface IBSWPair {
@@ -313,6 +262,15 @@ contract SwapFeeReward is Ownable{
     function setOracle(IOracle _oracle) public onlyOwner {
         require(address(_oracle) != address(0), "SwapMining: new oracle is the zero address");
         oracle = _oracle;
+    }
+
+    function setFactory(address _factory) public onlyOwner {
+        require(_factory != address(0), "SwapMining: new factory is the zero address");
+        factory = _factory;
+    }
+
+    function setInitCodeHash(bytes32 _INIT_CODE_HASH) public onlyOwner {
+        INIT_CODE_HASH = _INIT_CODE_HASH;
     }
 
     //pairs list
