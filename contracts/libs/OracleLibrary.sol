@@ -56,7 +56,7 @@ interface IBiswapPair {
     function setDevFee(uint32) external;
 }
 
-library MdexOracleLibrary {
+library BSWOracleLibrary {
     using FixedPoint for *;
 
     // helper function that returns the current block timestamp within the range of uint32, i.e. [0, 2**32 - 1]

@@ -28,9 +28,9 @@ contract Oracle {
     }
 
     function sortTokens(address tokenA, address tokenB) public pure returns (address token0, address token1) {
-        require(tokenA != tokenB, 'MdexSwapFactory: IDENTICAL_ADDRESSES');
+        require(tokenA != tokenB, 'BSWSwapFactory: IDENTICAL_ADDRESSES');
         (token0, token1) = tokenA < tokenB ? (tokenA, tokenB) : (tokenB, tokenA);
-        require(token0 != address(0), 'MdexSwapFactory: ZERO_ADDRESS');
+        require(token0 != address(0), 'BSWSwapFactory: ZERO_ADDRESS');
     }
 
     function pairFor(address tokenA, address tokenB) public view returns (address pair) {
@@ -48,8 +48,8 @@ contract Oracle {
 
         Observation storage observation = pairObservations[pair];
         uint timeElapsed = block.timestamp - observation.timestamp;
-        require(timeElapsed >= CYCLE, 'MDEXOracle: PERIOD_NOT_ELAPSED');
-        (uint price0Cumulative, uint price1Cumulative,) = MdexOracleLibrary.currentCumulativePrices(pair);
+        require(timeElapsed >= CYCLE, 'BSWOracle: PERIOD_NOT_ELAPSED');
+        (uint price0Cumulative, uint price1Cumulative,) = BSWOracleLibrary.currentCumulativePrices(pair);
         observation.timestamp = block.timestamp;
         observation.price0Cumulative = price0Cumulative;
         observation.price1Cumulative = price1Cumulative;
@@ -71,7 +71,7 @@ contract Oracle {
         address pair = pairFor(tokenIn, tokenOut);
         Observation storage observation = pairObservations[pair];
         uint timeElapsed = block.timestamp - observation.timestamp;
-        (uint price0Cumulative, uint price1Cumulative,) = MdexOracleLibrary.currentCumulativePrices(pair);
+        (uint price0Cumulative, uint price1Cumulative,) = BSWOracleLibrary.currentCumulativePrices(pair);
         (address token0,) = sortTokens(tokenIn, tokenOut);
 
         if (token0 == tokenIn) {

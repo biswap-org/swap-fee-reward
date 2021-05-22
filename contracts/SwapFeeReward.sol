@@ -187,9 +187,9 @@ contract SwapFeeReward is Ownable{
     }
 
     function sortTokens(address tokenA, address tokenB) public pure returns (address token0, address token1) {
-        require(tokenA != tokenB, 'MdexSwapFactory: IDENTICAL_ADDRESSES');
+        require(tokenA != tokenB, 'BSWSwapFactory: IDENTICAL_ADDRESSES');
         (token0, token1) = tokenA < tokenB ? (tokenA, tokenB) : (tokenB, tokenA);
-        require(token0 != address(0), 'MdexSwapFactory: ZERO_ADDRESS');
+        require(token0 != address(0), 'BSWSwapFactory: ZERO_ADDRESS');
     }
 
     function pairFor(address tokenA, address tokenB) public view returns (address pair) {
@@ -281,7 +281,7 @@ contract SwapFeeReward is Ownable{
         return quantity;
     }
 
-    // Only tokens in the whitelist can be mined MDX
+    // Only tokens in the whitelist can be mined BSW
     function addWhitelist(address _addToken) public onlyOwner returns (bool) {
         require(_addToken != address(0), "SwapMining: token is the zero address");
         return EnumerableSet.add(_whitelist, _addToken);
