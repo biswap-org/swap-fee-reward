@@ -94,9 +94,9 @@ contract SwapFeeReward is Ownable{
     address public router;
     bytes32 public INIT_CODE_HASH;
     //max amount in BSW that this contact will be mint;
-    uint256 public maxMiningAmount  = 100 * 1e18;
-    uint256 public maxMiningInPhase = 1 * 1e18;
-    uint currentPhase = 1;
+    uint256 public maxMiningAmount  = 100000000 * 1e18;
+    uint256 public maxMiningInPhase = 1000000 * 1e18;
+    uint public currentPhase = 1;
     uint256 public totalMined = 0;
     IBswToken public bswToken;
     IOracle public oracle;
@@ -154,13 +154,7 @@ contract SwapFeeReward is Ownable{
     function getSwapFee(address tokenA, address tokenB) internal view returns (uint swapFee) {
         swapFee = uint(1000).sub(IBSWPair(pairFor(tokenA, tokenB)).swapFee());
     }
-
-    function checkPhase() private view returns (bool){
-        if (totalMined >= currentPhase.mul(maxMiningInPhase)){
-            return false;
-        }
-        return true;
-    }
+    
     function setPhase(uint _newPhase) public onlyOwner returns(bool){
         currentPhase = _newPhase;
         return true;
@@ -168,9 +162,6 @@ contract SwapFeeReward is Ownable{
 
     function swap(address account, address input, address output, uint256 amount) public onlyRouter returns (bool) {
         if (!isWhitelist(input) || !isWhitelist(output)) {
-            return false;
-        }
-        if (checkPhase() == false){
             return false;
         }
         if (maxMiningAmount <= totalMined){
@@ -187,6 +178,11 @@ contract SwapFeeReward is Ownable{
         uint256 fee = amount.div(pairFee);
         uint256 quantity = getQuantity(output, fee, targetToken);
         quantity = quantity.mul(pool.percentReward).div(100);
+
+        if (totalMined.add(quantity) > currentPhase.mul(maxMiningInPhase)){
+            return false;
+        }
+
         _balances[account] = _balances[account].add(quantity);
         return true;
     }
@@ -197,8 +193,8 @@ contract SwapFeeReward is Ownable{
 
     function withdraw() public returns(bool){
         require(maxMiningAmount > totalMined, 'SwapFeeReward: Mined all tokens');
-        require(checkPhase() == true, 'SwapFeeReward: Mined all tokens in this phase');
         uint256 balance = _balances[msg.sender];
+        require(totalMined.add(balance) <= currentPhase.mul(maxMiningInPhase), 'SwapFeeReward: Mined all tokens in this phase');
         if (balance > 0){
             bswToken.mint(msg.sender, balance);
             _balances[msg.sender] = _balances[msg.sender].sub(balance);
