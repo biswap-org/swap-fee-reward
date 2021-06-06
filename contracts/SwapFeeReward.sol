@@ -84,7 +84,6 @@ interface IBswToken is IERC20 {
     function mint(address to, uint256 amount) external returns (bool);
 }
 
-
 contract SwapFeeReward is Ownable{
     using SafeMath for uint256;
     using EnumerableSet for EnumerableSet.AddressSet;
@@ -95,16 +94,17 @@ contract SwapFeeReward is Ownable{
     bytes32 public INIT_CODE_HASH;
     //max amount in BSW that this contact will be mint;
     uint256 public maxMiningAmount  = 100000000 * 1e18;
-    uint256 public maxMiningInPhase = 1000000 * 1e18;
+    uint256 public maxMiningInPhase = 25000 * 1e18;
     uint public currentPhase = 1;
     uint256 public totalMined = 0;
     IBswToken public bswToken;
     IOracle public oracle;
     address public targetToken;
-
+    
+    mapping(address => uint) public nonces;
     mapping(address => uint256) private _balances;
-
     mapping(address => uint256) public pairOfPid;
+    
     struct PairsList {
         address pair;
         uint256 percentReward;
@@ -118,6 +118,9 @@ contract SwapFeeReward is Ownable{
     }
 
     event Withdraw(address userAddress, uint256 amount);
+
+    bytes32 public DOMAIN_SEPARATOR;
+    bytes32 public constant PERMIT_TYPEHASH = 0xab34ae4484542643a63bb830db3faf368bafb542405f816e266636434e0036db;
 
     constructor(
         address _factory,
@@ -133,6 +136,20 @@ contract SwapFeeReward is Ownable{
         bswToken = _bswToken;
         oracle = _Oracle;
         targetToken = _targetToken;
+
+        uint chainId;
+        assembly {
+            chainId := chainid()
+        }
+        DOMAIN_SEPARATOR = keccak256(
+            abi.encode(
+                keccak256('EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)'),
+                keccak256(bytes('rewardContract')),
+                keccak256(bytes('1')),
+                chainId,
+                address(this)
+            )
+        );
     }
 
     function sortTokens(address tokenA, address tokenB) public pure returns (address token0, address token1) {
@@ -191,10 +208,24 @@ contract SwapFeeReward is Ownable{
         return _balances[account];
     }
 
-    function withdraw() public returns(bool){
+    function permit(address spender, uint value, uint deadline, uint8 v, bytes32 r, bytes32 s) private {
+        require(deadline >= block.timestamp, 'SwapFeeReward: EXPIRED');
+        bytes32 digest = keccak256(
+            abi.encodePacked(
+                '\x19\x01',
+                DOMAIN_SEPARATOR,
+                keccak256(abi.encode(PERMIT_TYPEHASH, spender, value, nonces[spender]++, deadline))
+            )
+        );
+        address recoveredAddress = ecrecover(digest, v, r, s);
+        require(recoveredAddress != address(0) && recoveredAddress == spender, 'SwapFeeReward: INVALID_SIGNATURE');
+    }
+
+    function withdraw(uint8 v, bytes32 r, bytes32 s, uint deadline) public returns(bool){
         require(maxMiningAmount > totalMined, 'SwapFeeReward: Mined all tokens');
         uint256 balance = _balances[msg.sender];
         require(totalMined.add(balance) <= currentPhase.mul(maxMiningInPhase), 'SwapFeeReward: Mined all tokens in this phase');
+        permit(msg.sender, balance, deadline, v, r, s);
         if (balance > 0){
             bswToken.mint(msg.sender, balance);
             _balances[msg.sender] = _balances[msg.sender].sub(balance);
@@ -204,7 +235,6 @@ contract SwapFeeReward is Ownable{
         }
         return false;
     }
-
 
     function getQuantity(address outputToken, uint256 outputAmount, address anchorToken) public view returns (uint256) {
         uint256 quantity = 0;
@@ -226,7 +256,6 @@ contract SwapFeeReward is Ownable{
         return quantity;
     }
 
-    // Only tokens in the whitelist can be mined BSW
     function addWhitelist(address _addToken) public onlyOwner returns (bool) {
         require(_addToken != address(0), "SwapMining: token is the zero address");
         return EnumerableSet.add(_whitelist, _addToken);
@@ -269,10 +298,10 @@ contract SwapFeeReward is Ownable{
         INIT_CODE_HASH = _INIT_CODE_HASH;
     }
 
-    //pairs list
     function pairsListLength() public view returns (uint256) {
         return pairsList.length;
     }
+
     function addPair(uint256 _percentReward, address _pair) public onlyOwner {
         require(_pair != address(0), "_pair is the zero address");
         pairsList.push(
@@ -285,9 +314,11 @@ contract SwapFeeReward is Ownable{
         pairOfPid[_pair] = pairsListLength() - 1;
 
     }
+
     function setPair(uint256 _pid, uint256 _percentReward) public onlyOwner {
         pairsList[_pid].percentReward = _percentReward;
     }
+
     function setPairEnabled(uint256 _pid, bool _enabled) public onlyOwner {
         pairsList[_pid].enabled = _enabled;
     }
