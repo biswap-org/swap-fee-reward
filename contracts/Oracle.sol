@@ -15,6 +15,7 @@ contract Oracle {
     }
 
     address public immutable factory;
+    address public priceUpdater;
     uint public constant CYCLE = 15 minutes;
 
     bytes32 INIT_CODE_HASH;
@@ -22,9 +23,10 @@ contract Oracle {
     // mapping from pair address to a list of price observations of that pair
     mapping(address => Observation) public pairObservations;
 
-    constructor(address factory_, bytes32 INIT_CODE_HASH_) public {
+    constructor(address factory_, bytes32 INIT_CODE_HASH_, address priceUpdater_) public {
         factory = factory_;
         INIT_CODE_HASH = INIT_CODE_HASH_;
+        priceUpdater = priceUpdater_;
     }
 
     function sortTokens(address tokenA, address tokenB) public pure returns (address token0, address token1) {
@@ -44,6 +46,7 @@ contract Oracle {
     }
 
     function update(address tokenA, address tokenB) external {
+        require(msg.sender == priceUpdater, 'BSWOracle: Price can update only price updater address');
         address pair = pairFor(tokenA, tokenB);
 
         Observation storage observation = pairObservations[pair];
@@ -70,6 +73,11 @@ contract Oracle {
     function consult(address tokenIn, uint amountIn, address tokenOut) external view returns (uint amountOut) {
         address pair = pairFor(tokenIn, tokenOut);
         Observation storage observation = pairObservations[pair];
+
+        if (pairObservations[pair].price0Cumulative == 0 || pairObservations[pair].price1Cumulative == 0){
+            return 0;
+        }
+
         uint timeElapsed = block.timestamp - observation.timestamp;
         (uint price0Cumulative, uint price1Cumulative,) = BSWOracleLibrary.currentCumulativePrices(pair);
         (address token0,) = sortTokens(tokenIn, tokenOut);

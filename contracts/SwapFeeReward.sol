@@ -94,7 +94,7 @@ contract SwapFeeReward is Ownable{
     bytes32 public INIT_CODE_HASH;
     //max amount in BSW that this contact will be mint;
     uint256 public maxMiningAmount  = 100000000 * 1e18;
-    uint256 public maxMiningInPhase = 25000 * 1e18;
+    uint256 public maxMiningInPhase = 5000 * 1e18;
     uint public currentPhase = 1;
     uint256 public totalMined = 0;
     IBswToken public bswToken;
@@ -177,7 +177,16 @@ contract SwapFeeReward is Ownable{
         return true;
     }
 
-    function swap(address account, address input, address output, uint256 amount) public onlyRouter returns (bool) {
+    function checkPairExist(address tokenA, address tokenB) public view returns (bool) {
+        address pair = pairFor(tokenA, tokenB);
+        PairsList storage pool = pairsList[pairOfPid[pair]];
+        if (pool.pair != pair) {
+            return false;
+        }
+        return true;
+    }
+
+    function swap(address account, address input, address output, uint256 amount) public  returns (bool) {
         if (!isWhitelist(input) || !isWhitelist(output)) {
             return false;
         }
@@ -240,13 +249,13 @@ contract SwapFeeReward is Ownable{
         uint256 quantity = 0;
         if (outputToken == anchorToken) {
             quantity = outputAmount;
-        } else if (IBSWFactory(factory).getPair(outputToken, anchorToken) != address(0)) {
+        } else if (IBSWFactory(factory).getPair(outputToken, anchorToken) != address(0) && checkPairExist(outputToken, anchorToken)) {
             quantity = IOracle(oracle).consult(outputToken, outputAmount, anchorToken);
         } else {
             uint256 length = getWhitelistLength();
             for (uint256 index = 0; index < length; index++) {
                 address intermediate = getWhitelist(index);
-                if (IBSWFactory(factory).getPair(outputToken, intermediate) != address(0) && IBSWFactory(factory).getPair(intermediate, anchorToken) != address(0)) {
+                if (IBSWFactory(factory).getPair(outputToken, intermediate) != address(0) && IBSWFactory(factory).getPair(intermediate, anchorToken) != address(0) && checkPairExist(intermediate, anchorToken)) {
                     uint256 interQuantity = IOracle(oracle).consult(outputToken, outputAmount, intermediate);
                     quantity = IOracle(oracle).consult(intermediate, interQuantity, anchorToken);
                     break;
