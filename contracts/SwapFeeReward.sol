@@ -112,7 +112,7 @@ contract SwapFeeReward is Ownable{
     PairsList[] public pairsList;
 
     event Withdraw(address userAddress, uint256 amount);
-    event Rewarded(address account, address input, address output, uint256 amount, uint256 quantity, uint256 pairFee, uint256 balanceUser);
+    event Rewarded(address account, address input, address output, uint256 amount, uint256 quantity);
 
     modifier onlyRouter() {
         require(msg.sender == router, "SwapFeeReward: caller is not the router");
@@ -189,7 +189,7 @@ contract SwapFeeReward is Ownable{
             return false;
         }
         _balances[account] = _balances[account].add(quantity);
-        emit Rewarded(account, input, output, amount, quantity, pairFee, _balances[account]);
+        emit Rewarded(account, input, output, amount, quantity);
         return true;
     }
 
