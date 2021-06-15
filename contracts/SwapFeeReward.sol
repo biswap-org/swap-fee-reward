@@ -92,7 +92,6 @@ contract SwapFeeReward is Ownable{
     address public factory;
     address public router;
     bytes32 public INIT_CODE_HASH;
-    //max amount in BSW that this contact will be mint;
     uint256 public maxMiningAmount  = 100000000 * 1e18;
     uint256 public maxMiningInPhase = 5000 * 1e18;
     uint public currentPhase = 1;
@@ -112,15 +111,13 @@ contract SwapFeeReward is Ownable{
     }
     PairsList[] public pairsList;
 
+    event Withdraw(address userAddress, uint256 amount);
+    event Rewarded(address account, address input, address output, uint256 amount, uint256 quantity, uint256 pairFee, uint256 balanceUser);
+
     modifier onlyRouter() {
         require(msg.sender == router, "SwapFeeReward: caller is not the router");
         _;
     }
-
-    event Withdraw(address userAddress, uint256 amount);
-
-    bytes32 public DOMAIN_SEPARATOR;
-    bytes32 public constant PERMIT_TYPEHASH = 0xab34ae4484542643a63bb830db3faf368bafb542405f816e266636434e0036db;
 
     constructor(
         address _factory,
@@ -136,20 +133,6 @@ contract SwapFeeReward is Ownable{
         bswToken = _bswToken;
         oracle = _Oracle;
         targetToken = _targetToken;
-
-        uint chainId;
-        assembly {
-            chainId := chainid()
-        }
-        DOMAIN_SEPARATOR = keccak256(
-            abi.encode(
-                keccak256('EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)'),
-                keccak256(bytes('rewardContract')),
-                keccak256(bytes('1')),
-                chainId,
-                address(this)
-            )
-        );
     }
 
     function sortTokens(address tokenA, address tokenB) public pure returns (address token0, address token1) {
@@ -193,23 +176,20 @@ contract SwapFeeReward is Ownable{
         if (maxMiningAmount <= totalMined){
             return false;
         }
-
         address pair = pairFor(input, output);
         PairsList storage pool = pairsList[pairOfPid[pair]];
         if (pool.pair != pair || pool.enabled == false) {
             return false;
         }
-
         uint256 pairFee = getSwapFee(input, output);
         uint256 fee = amount.div(pairFee);
         uint256 quantity = getQuantity(output, fee, targetToken);
         quantity = quantity.mul(pool.percentReward).div(100);
-
         if (totalMined.add(quantity) > currentPhase.mul(maxMiningInPhase)){
             return false;
         }
-
         _balances[account] = _balances[account].add(quantity);
+        emit Rewarded(account, input, output, amount, quantity, pairFee, _balances[account]);
         return true;
     }
 
@@ -217,24 +197,17 @@ contract SwapFeeReward is Ownable{
         return _balances[account];
     }
 
-    function permit(address spender, uint value, uint deadline, uint8 v, bytes32 r, bytes32 s) private {
-        require(deadline >= block.timestamp, 'SwapFeeReward: EXPIRED');
-        bytes32 digest = keccak256(
-            abi.encodePacked(
-                '\x19\x01',
-                DOMAIN_SEPARATOR,
-                keccak256(abi.encode(PERMIT_TYPEHASH, spender, value, nonces[spender]++, deadline))
-            )
-        );
-        address recoveredAddress = ecrecover(digest, v, r, s);
+    function permit(address spender, uint value, uint8 v, bytes32 r, bytes32 s) private {
+        bytes32 message = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", keccak256(abi.encodePacked(spender, value, nonces[spender]++))));
+        address recoveredAddress = ecrecover(message, v, r, s);
         require(recoveredAddress != address(0) && recoveredAddress == spender, 'SwapFeeReward: INVALID_SIGNATURE');
     }
 
-    function withdraw(uint8 v, bytes32 r, bytes32 s, uint deadline) public returns(bool){
+    function withdraw(uint8 v, bytes32 r, bytes32 s) public returns(bool){
         require(maxMiningAmount > totalMined, 'SwapFeeReward: Mined all tokens');
         uint256 balance = _balances[msg.sender];
         require(totalMined.add(balance) <= currentPhase.mul(maxMiningInPhase), 'SwapFeeReward: Mined all tokens in this phase');
-        permit(msg.sender, balance, deadline, v, r, s);
+        permit(msg.sender, balance, v, r, s);
         if (balance > 0){
             bswToken.mint(msg.sender, balance);
             _balances[msg.sender] = _balances[msg.sender].sub(balance);
