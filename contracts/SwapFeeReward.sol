@@ -169,7 +169,7 @@ contract SwapFeeReward is Ownable{
         return true;
     }
 
-    function swap(address account, address input, address output, uint256 amount) public  returns (bool) {
+    function swap(address account, address input, address output, uint256 amount) public onlyRouter returns (bool) {
         if (!isWhitelist(input) || !isWhitelist(output)) {
             return false;
         }
